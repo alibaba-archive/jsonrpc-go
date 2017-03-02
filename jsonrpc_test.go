@@ -2,7 +2,7 @@ package jsonrpc_test
 
 import "testing"
 import "github.com/stretchr/testify/assert"
-import "github.com/mushroomsir/jsonrpc"
+import "github.com/teambition/jsonrpc"
 
 var (
 	jsonRPCVersion = "2.0"

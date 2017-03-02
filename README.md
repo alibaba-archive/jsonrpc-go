@@ -1,16 +1,16 @@
 # jsonrpc
 
-[![Build Status](https://travis-ci.org/mushroomsir/jsonrpc.svg?branch=master)](https://travis-ci.org/mushroomsir/jsonrpc)
-[![Coverage Status](http://img.shields.io/coveralls/mushroomsir/jsonrpc.svg?style=flat-square)](https://coveralls.io/r/mushroomsir/jsonrpc)
-[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/mushroomsir/jsonrpc/master/LICENSE)
-[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/mushroomsir/jsonrpc)
+[![Build Status](https://travis-ci.org/teambition/jsonrpc.svg?branch=master)](https://travis-ci.org/teambition/jsonrpc)
+[![Coverage Status](http://img.shields.io/coveralls/teambition/jsonrpc.svg?style=flat-square)](https://coveralls.io/r/teambition/jsonrpc)
+[![License](http://img.shields.io/badge/license-mit-blue.svg?style=flat-square)](https://raw.githubusercontent.com/teambition/jsonrpc/master/LICENSE)
+[![GoDoc](http://img.shields.io/badge/go-documentation-blue.svg?style=flat-square)](http://godoc.org/github.com/teambition/jsonrpc)
 
 jsonrpc is an golang implementation just for parse and serialize JSON-RPC2 messages, it's easy to integration with your any application.
 
 Inspired by [https://github.com/teambition/jsonrpc-lite](https://github.com/teambition/jsonrpc-lite) and [JSON-RPC 2.0 specifications](http://jsonrpc.org/specification)
 ## Installation
 ```go
-go get github.com/mushroomsir/jsonrpc
+go get github.com/teambition/jsonrpc
 ```
 
 ## API

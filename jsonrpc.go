@@ -1,10 +1,11 @@
 package jsonrpc
 
 import (
+	"crypto/rand"
 	"encoding/json"
 	"errors"
-	"math/rand"
-	"strconv"
+	"fmt"
+	"io"
 )
 
 var (
@@ -81,7 +82,8 @@ type ErrorObj struct {
 // Request2 creates a JSON-RPC 2.0 request message structures without id.
 // the id is automatic generation by strconv.FormatInt(rand.Int63(), 10)
 func Request2(method string, args ...interface{}) (result string, err error) {
-	return Request(strconv.FormatInt(rand.Int63(), 10), method, args...)
+	guid, _ := newUUID()
+	return Request(guid, method, args...)
 }
 
 // Request creates a JSON-RPC 2.0 request message structures.
@@ -303,4 +305,18 @@ func checkReqType(res *ClientRequest) (err error) {
 		res.Type = RequestType
 	}
 	return
+}
+
+// newUUID generates a random UUID according to RFC 4122
+func newUUID() (string, error) {
+	uuid := make([]byte, 16)
+	n, err := io.ReadFull(rand.Reader, uuid)
+	if n != len(uuid) || err != nil {
+		return "", err
+	}
+	// variant bits; see section 4.1.1
+	uuid[8] = uuid[8]&^0xc0 | 0x80
+	// version 4 (pseudo-random); see section 4.1.3
+	uuid[6] = uuid[6]&^0xf0 | 0x40
+	return fmt.Sprintf("%x%x%x%x%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }

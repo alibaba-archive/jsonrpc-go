@@ -1,15 +1,12 @@
 package jsonrpc
 
 import (
-	"crypto/rand"
 	"encoding/json"
 	"errors"
-	"fmt"
-	"io"
 )
 
-var (
-	jsonRPCVersion = "2.0"
+const (
+
 	// Invalid message type
 	Invalid = "invalid"
 	// NotificationType message type
@@ -20,24 +17,19 @@ var (
 	ErrorType = "error"
 	// SuccessType message type
 	SuccessType = "success"
-	// RPCParseError means invalid JSON was received by the server.An error occurred on the server while parsing the JSON text.
-	RPCParseError = &ErrorObj{Code: -32700, Message: "Parse error"}
-	// RPCInvalidRequest means the JSON sent is not a valid Request object.
-	RPCInvalidRequest = &ErrorObj{Code: -32600, Message: "Invalid Request"}
-	// RPCNotFound means the method does not exist / is not available.
-	RPCNotFound = &ErrorObj{Code: -32601, Message: "Method not found"}
-	// RPCInvalidParams means Invalid method parameter(s).
-	RPCInvalidParams = &ErrorObj{Code: -32602, Message: "Invalid params"}
-	// RPCInternalError means Internal JSON-RPC error.
-	RPCInternalError = &ErrorObj{Code: -32603, Message: "Internal error"}
+
+	jsonRPCVersion = "2.0"
+)
+
+var (
 	// ErrEmptyMessage means empty jsonrpc message error
-	ErrEmptyMessage = errors.New("Empty jsonrpc message")
+	errEmptyMessage = errors.New("Empty jsonrpc message")
 	// ErrResultArgument means invalid 'result' argument
-	ErrResultArgument = errors.New("Invalid 'result' argument that's required")
+	errResultArgument = errors.New("Invalid 'result' argument that's required")
 	// ErrJsonrpcVersion means invalid jsonrpc version
-	ErrJsonrpcVersion = errors.New("invalid jsonrpc version")
+	errJsonrpcVersion = errors.New("invalid jsonrpc version")
 	// ErrJsonrpcObject means invalid jsonrpc object
-	ErrJsonrpcObject = errors.New("invalid jsonrpc object")
+	errJsonrpcObject = errors.New("invalid jsonrpc object")
 )
 
 // ClientRequest represents a JSON-RPC data from client.
@@ -77,13 +69,6 @@ type ErrorObj struct {
 	Code    int         `json:"code"`
 	Message string      `json:"message"`
 	Data    interface{} `json:"data,omitempty"`
-}
-
-// Request2 creates a JSON-RPC 2.0 request message structures without id.
-// the id is automatic generation by strconv.FormatInt(rand.Int63(), 10)
-func Request2(method string, args ...interface{}) (result string, err error) {
-	guid, _ := newUUID()
-	return Request(guid, method, args...)
 }
 
 // Request creates a JSON-RPC 2.0 request message structures.
@@ -163,7 +148,7 @@ func ParseReply(msg string) (res *ClientResponse, err error) {
 // ParseBatchReply Parse message of server reply batch request.
 func ParseBatchReply(msg string) (res []*ClientResponse, err error) {
 	if msg == "" || len(msg) < 2 {
-		return res, ErrEmptyMessage
+		return res, errEmptyMessage
 	}
 	payloads := make([]map[string]interface{}, 0)
 	if err = validateMsg(msg, &payloads); err == nil {
@@ -180,7 +165,7 @@ func ParseBatchReply(msg string) (res []*ClientResponse, err error) {
 // The result parameter is required
 func Success(id interface{}, result interface{}) (str string, err error) {
 	if result == nil {
-		return str, ErrResultArgument
+		return str, errResultArgument
 	}
 	if err = validateID(id); err != nil {
 		return
@@ -208,8 +193,13 @@ func Error(id interface{}, rpcerr *ErrorObj) (str string, err error) {
 	return string(data), err
 }
 
-// CreateError a JsonRpc error
-func CreateError(code int, msg string, data ...interface{}) (obj *ErrorObj) {
+// ErrorFrom return an ErrorObj by argument
+func ErrorFrom(err error) (obj *ErrorObj) {
+	return &ErrorObj{Code: -32701, Message: err.Error()}
+}
+
+// ErrorWith a JsonRpc error
+func ErrorWith(code int, msg string, data ...interface{}) (obj *ErrorObj) {
 	obj = &ErrorObj{Code: code, Message: msg}
 	if len(data) > 0 {
 		obj.Data = data[0]
@@ -217,6 +207,30 @@ func CreateError(code int, msg string, data ...interface{}) (obj *ErrorObj) {
 	return obj
 }
 
+// ParseError invalid JSON was received by the server.An error occurred on the server while parsing the JSON text.
+func ParseError(data ...interface{}) *ErrorObj {
+	return ErrorWith(-32700, "Parse error", data...)
+}
+
+// InvalidRequest the request is not a valid Request object.
+func InvalidRequest(data ...interface{}) *ErrorObj {
+	return ErrorWith(-32600, "Invalid Request", data...)
+}
+
+// MethodNotFound the method does not exist or is not available.
+func MethodNotFound(data ...interface{}) *ErrorObj {
+	return ErrorWith(-32601, "Method not found", data...)
+}
+
+// InvalidParams Invalid method parameter(s).
+func InvalidParams(data ...interface{}) *ErrorObj {
+	return ErrorWith(-32602, "Invalid params", data...)
+}
+
+// InternalError  Internal JSON-RPC error.
+func InternalError(data ...interface{}) *ErrorObj {
+	return ErrorWith(-32603, "Internal error", data...)
+}
 func parseResMap(val map[string]interface{}) (r *ClientResponse, err error) {
 	r = &ClientResponse{PlayLoad: &PayloadRes{}}
 	if version, ok := val["jsonrpc"]; ok {
@@ -227,33 +241,50 @@ func parseResMap(val map[string]interface{}) (r *ClientResponse, err error) {
 	}
 	if errs, ok := val["error"]; ok {
 		r.PlayLoad.Error = &ErrorObj{}
+		r.Type = ErrorType
 		if err2, ok := errs.(map[string]interface{}); ok {
 			r.PlayLoad.Error.Code = int(err2["code"].(float64))
 			r.PlayLoad.Error.Message = err2["message"].(string)
 			r.PlayLoad.Error.Data = err2["data"]
 		}
-	}
-	if result, ok := val["result"]; ok {
+	} else if result, ok := val["result"]; ok {
 		r.PlayLoad.Result = result
+		r.Type = SuccessType
+	} else {
+		r.Type = Invalid
+		err = errJsonrpcObject
 	}
-	err = checkResType(r)
+	if r.PlayLoad.Version != jsonRPCVersion {
+		r.Type = Invalid
+		err = errJsonrpcVersion
+	}
 	return
 }
 func parseReqMap(val map[string]interface{}) (r *ClientRequest, err error) {
 	r = &ClientRequest{PlayLoad: &PayloadReq{}}
 	if version, ok := val["jsonrpc"]; ok {
-		r.PlayLoad.Version = version.(string)
+		r.PlayLoad.Version, _ = version.(string)
 	}
 	if ID, ok := val["id"]; ok {
 		r.PlayLoad.ID = ID
 	}
 	if method, ok := val["method"]; ok {
-		r.PlayLoad.Method = method.(string)
+		r.PlayLoad.Method, _ = method.(string)
 	}
 	if params, ok := val["params"]; ok {
 		r.PlayLoad.Params = params
 	}
-	err = checkReqType(r)
+	if r.PlayLoad.Version != jsonRPCVersion {
+		r.Type = Invalid
+		err = errJsonrpcVersion
+	} else if r.PlayLoad.Method == "" {
+		r.Type = Invalid
+		err = errJsonrpcObject
+	} else if r.PlayLoad.ID == nil {
+		r.Type = NotificationType
+	} else {
+		r.Type = RequestType
+	}
 	return
 }
 func validateID(id interface{}) (err error) {
@@ -269,54 +300,11 @@ func validateID(id interface{}) (err error) {
 }
 func validateMsg(msg string, p interface{}) (err error) {
 	if msg == "" {
-		return ErrEmptyMessage
+		return errEmptyMessage
 	}
 	err = json.Unmarshal([]byte(msg), p)
 	if err != nil {
 		err = errors.New("invalid jsonrpc message structures")
 	}
 	return
-}
-func checkResType(res *ClientResponse) (err error) {
-	p := res.PlayLoad
-	if p.Version != jsonRPCVersion {
-		res.Type = Invalid
-		err = ErrJsonrpcVersion
-	} else if p.Error != nil {
-		res.Type = ErrorType
-	} else if p.Result != nil {
-		res.Type = SuccessType
-	} else {
-		err = ErrJsonrpcObject
-	}
-	return
-}
-func checkReqType(res *ClientRequest) (err error) {
-	p := res.PlayLoad
-	if p.Version != jsonRPCVersion {
-		res.Type = Invalid
-		err = ErrJsonrpcVersion
-	} else if p.Method == "" {
-		res.Type = Invalid
-		err = ErrJsonrpcObject
-	} else if p.ID == nil {
-		res.Type = NotificationType
-	} else {
-		res.Type = RequestType
-	}
-	return
-}
-
-// newUUID generates a random UUID according to RFC 4122
-func newUUID() (string, error) {
-	uuid := make([]byte, 16)
-	n, err := io.ReadFull(rand.Reader, uuid)
-	if n != len(uuid) || err != nil {
-		return "", err
-	}
-	// variant bits; see section 4.1.1
-	uuid[8] = uuid[8]&^0xc0 | 0x80
-	// version 4 (pseudo-random); see section 4.1.3
-	uuid[6] = uuid[6]&^0xf0 | 0x40
-	return fmt.Sprintf("%x%x%x%x%x", uuid[0:4], uuid[4:6], uuid[6:8], uuid[8:10], uuid[10:]), nil
 }

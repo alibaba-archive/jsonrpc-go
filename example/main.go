@@ -1,12 +1,9 @@
 package main
 
-import "github.com/teambition/jsonrpc-go"
+import jsonrpc "github.com/teambition/jsonrpc-go"
 
 func main() {
-	arr := "[{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null},{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": \"1\"},{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": \"1\"}]"
+	arr := "[{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": null},{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": \"1\"},{\"jsonrpc\": \"2.0\", \"error\": {\"code\": -32601, \"message\": \"Method not found\"}, \"id\": \"2\"}]"
 
-	_, err := jsonrpc.ParseBatchReply(arr)
-	if err != nil {
-		println(err.Error())
-	}
+	jsonrpc.Parse(arr)
 }

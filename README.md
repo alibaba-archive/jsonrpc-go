@@ -14,39 +14,24 @@ go get github.com/teambition/jsonrpc-go
 ```
 
 ## API
-####  jsonrpc.Request(id, method[, params])
-Creates a JSON-RPC 2.0 message structures 
-- `id`: {String|Int|nil}
-- `method`: {String}
-- `params`:  {interface{}}, optional
+### Generate jsonrpc 2.0 message.
 ```go
-	val, err := jsonrpc.Request(123, "update")
-	{
-    "jsonrpc": "2.0",
-    "method": "update",
-    "id": 123
-    }
-```
-####  jsonrpc.Request2(method[, params])
-Creates a JSON-RPC 2.0 message structures, the id is automatic generation by strconv.FormatInt(rand.Int63(), 10)
-- `method`: {String}
-- `params`:  {interface{}}, optional
+// Request creates a JSON-RPC 2.0 request message structures.
+// the id must be {String|Integer|nil} type
+func Request(id interface{}, method string, args ...interface{}) (result string, err *ErrorObj)
+// Notification Creates a JSON-RPC 2.0 notification message structures without id.
+func Notification(method string, args ...interface{}) (string, *ErrorObj) 
+//Batch return a JSON-RPC 2.0 batch message structures.
+func Batch(batch ...string) (arrstr string)
+// Success return a JSON-RPC 2.0 success message structures.
+// The result parameter is required
+func Success(id interface{}, msg interface{}) (result string, err *ErrorObj)
+//Error return a JSON-RPC 2.0 error message structures.
+func Error(id interface{}, rpcerr *ErrorObj) (result string, err *ErrorObj) 
+``` 
+
+## Parse jsonrpc 2.0 message structures.
 ```go
-	val, err := jsonrpc.Request("update")
-	{
-    "jsonrpc": "2.0",
-    "method": "update",
-    "id": randnum
-    }
-```
-####  jsonrpc.Notification(method[, params])
-Creates a JSON-RPC 2.0 notification message structures
-- `method`: {String}
-- `params`:  {interface{}}, optional
-```go
-    val, err = jsonrpc.Notification("update")
-    {
-    "jsonrpc": "2.0",
-    "method": "update"
-    }
-```   
+// Parse return jsonrpc 2.0 message object.
+func Parse(msg string) (req *RPC) 
+```           

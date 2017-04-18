@@ -1,7 +1,7 @@
 package jsonrpc
 
 import "encoding/json"
-import "strings"
+import "bytes"
 
 // MsgType ...
 type MsgType string
@@ -45,7 +45,7 @@ type ErrorObj struct {
 
 // Request return a JSON-RPC 2.0 request message structures.
 // the id must be {String|Integer|nil} type
-func Request(id interface{}, method string, args ...interface{}) (result string, err *ErrorObj) {
+func Request(id interface{}, method string, args ...interface{}) (result []byte, err *ErrorObj) {
 	if err = validateID(id); err != nil {
 		return
 	}
@@ -61,28 +61,28 @@ func Request(id interface{}, method string, args ...interface{}) (result string,
 }
 
 // Notification return a JSON-RPC 2.0 notification message structures without id.
-func Notification(method string, args ...interface{}) (string, *ErrorObj) {
+func Notification(method string, args ...interface{}) ([]byte, *ErrorObj) {
 	return Request(nil, method, args...)
 }
 
 //Batch return a JSON-RPC 2.0 batch message structures.
-func Batch(batch ...string) (arrstr string) {
+func Batch(batch ...[]byte) (arrstr []byte) {
 	if len(batch) == 0 {
-		return "[]"
+		return []byte("[]")
 	}
-	arrstr = "["
-	for index := 0; index < len(batch)-1; index++ {
-		arrstr += batch[index]
-		arrstr += ","
+	arrstr = []byte{'['}
+	for _, item := range batch {
+		arrstr = append(arrstr, item...)
+		arrstr = append(arrstr, ',')
 	}
-	arrstr += batch[len(batch)-1]
-	arrstr += "]"
+	arrstr = arrstr[0 : len(arrstr)-1]
+	arrstr = append(arrstr, ']')
 	return
 }
 
 // Success return a JSON-RPC 2.0 success message structures.
 // The result parameter is required
-func Success(id interface{}, msg interface{}) (result string, err *ErrorObj) {
+func Success(id interface{}, msg interface{}) (result []byte, err *ErrorObj) {
 	if msg == nil {
 		return result, InternalError()
 	}
@@ -98,7 +98,7 @@ func Success(id interface{}, msg interface{}) (result string, err *ErrorObj) {
 }
 
 //Error return a JSON-RPC 2.0 error message structures.
-func Error(id interface{}, rpcerr *ErrorObj) (result string, err *ErrorObj) {
+func Error(id interface{}, rpcerr *ErrorObj) (result []byte, err *ErrorObj) {
 	if err = validateID(id); err != nil {
 		return
 	}
@@ -149,9 +149,14 @@ func InternalError(data ...interface{}) *ErrorObj {
 	return ErrorWith(-32603, "Internal error", data...)
 }
 
+// ParseString ...
+func ParseString(msg string) (req *RPC, batch []*RPC) {
+	return Parse([]byte(msg))
+}
+
 // Parse return jsonrpc 2.0 message object, ignore the first return value if the msg is batch rpc.
-func Parse(msg string) (req *RPC, batch []*RPC) {
-	if strings.HasPrefix(msg, "[") && strings.HasSuffix(msg, "]") {
+func Parse(msg []byte) (req *RPC, batch []*RPC) {
+	if bytes.HasPrefix(msg, []byte{'['}) && bytes.HasSuffix(msg, []byte{']'}) {
 		batch = make([]*RPC, 1)
 		if err := validateMsg(msg, &batch); err == nil {
 			for _, val := range batch {
@@ -213,20 +218,20 @@ func validateID(id interface{}) (err *ErrorObj) {
 	}
 	return
 }
-func validateMsg(msg string, p interface{}) *ErrorObj {
-	if msg == "" {
+func validateMsg(msg []byte, p interface{}) *ErrorObj {
+	if len(msg) < 1 {
 		return InvalidRequest()
 	}
-	err := json.Unmarshal([]byte(msg), p)
+	err := json.Unmarshal(msg, p)
 	if err != nil {
 		return ParseError(err.Error())
 	}
 	return nil
 }
-func marshal(v interface{}) (string, *ErrorObj) {
+func marshal(v interface{}) ([]byte, *ErrorObj) {
 	data, errs := json.Marshal(v)
 	if errs != nil {
-		return "", InternalError(errs.Error())
+		return nil, InternalError(errs.Error())
 	}
-	return string(data), nil
+	return data, nil
 }
